@@ -4,7 +4,6 @@ import subprocess
 
 app = Flask(__name__)
 
-
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
     try:
@@ -24,14 +23,28 @@ def webhook():
         except Exception as e:
             return f"Error: Unable to change directory to {target_dir}. Exception: {str(e)}", 500
 
-        # Step 4: 执行 `yarn docs:build`
-        command = "yarn docs:build"
+        # Step 4: 执行 `git pull`
         try:
-            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            stdout, stderr = process.communicate()
+            git_pull_command = "git pull"
+            git_pull_process = subprocess.Popen(git_pull_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = git_pull_process.communicate()
+
+            # 检查 `git pull` 的返回码
+            if git_pull_process.returncode == 0:
+                pull_output = stdout.decode('utf-8')
+            else:
+                return f"Error during git pull: {stderr.decode('utf-8')}", 500
+        except Exception as e:
+            return f"Error: Failed to execute 'git pull'. Exception: {str(e)}", 500
+
+        # Step 5: 执行 `yarn docs:build`
+        try:
+            build_command = "yarn docs:build"
+            build_process = subprocess.Popen(build_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = build_process.communicate()
 
             # 检查命令执行的返回码
-            if process.returncode == 0:
+            if build_process.returncode == 0:
                 return f"Success: {stdout.decode('utf-8')}", 200
             else:
                 return f"Error during build: {stderr.decode('utf-8')}", 500
@@ -40,7 +53,6 @@ def webhook():
 
     except Exception as e:
         return f"General Exception: {str(e)}", 500
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
