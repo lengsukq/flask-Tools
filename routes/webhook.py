@@ -6,12 +6,18 @@ import subprocess
 def webhook_route(app):
     @app.route('/webhook', methods=['GET', 'POST'])
     def webhook():
+        return handle_webhook('/home/code/vitePress-Web', 'yarn docs:build')
+
+    @app.route('/webhook-opt', methods=['GET', 'POST'])
+    def webhook_opt():
+        return handle_webhook('/home/cunchu/code/ibs-jeecg-vue', 'yarn build:test2')
+
+    def handle_webhook(target_dir, build_command):
         try:
             # Step 1: 检查当前工作目录
             current_dir = os.getcwd()
 
             # Step 2: 检查目标目录是否存在
-            target_dir = '/home/code/vitePress-Web'
             if not os.path.exists(target_dir):
                 return f"Error: Target directory {target_dir} does not exist", 500
             if not os.access(target_dir, os.R_OK | os.W_OK | os.X_OK):
@@ -37,9 +43,8 @@ def webhook_route(app):
             except Exception as e:
                 return f"Error: Failed to execute 'git pull'. Exception: {str(e)}", 500
 
-            # Step 5: 执行 `yarn docs:build`
+            # Step 5: 执行编译命令
             try:
-                build_command = "yarn docs:build"
                 build_process = subprocess.Popen(build_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 stdout, stderr = build_process.communicate()
 
@@ -49,7 +54,7 @@ def webhook_route(app):
                 else:
                     return f"Error during build: {stderr.decode('utf-8')}", 500
             except Exception as e:
-                return f"Error: Failed to execute 'yarn docs:build'. Exception: {str(e)}", 500
+                return f"Error: Failed to execute '{build_command}'. Exception: {str(e)}", 500
 
         except Exception as e:
             return f"General Exception: {str(e)}", 500
