@@ -32,27 +32,19 @@ def webhook_route(app):
             # Step 4: 执行 `git pull`
             try:
                 git_pull_command = "git pull"
-                git_pull_process = subprocess.Popen(git_pull_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = git_pull_process.communicate()
+                git_pull_process = subprocess.Popen(git_pull_command, shell=True)
+                git_pull_process.wait()  # 等待 git pull 完成
 
                 # 检查 `git pull` 的返回码
-                if git_pull_process.returncode == 0:
-                    pull_output = stdout.decode('utf-8')
-                else:
-                    return f"Error during git pull: {stderr.decode('utf-8')}", 500
+                if git_pull_process.returncode != 0:
+                    return f"Error during git pull", 500
             except Exception as e:
                 return f"Error: Failed to execute 'git pull'. Exception: {str(e)}", 500
 
             # Step 5: 执行编译命令
             try:
-                build_process = subprocess.Popen(build_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = build_process.communicate()
-
-                # 检查命令执行的返回码
-                if build_process.returncode == 0:
-                    return f"Success: {stdout.decode('utf-8')}", 200
-                else:
-                    return f"Error during build: {stderr.decode('utf-8')}", 500
+                build_process = subprocess.Popen(build_command, shell=True)
+                return "Command started successfully", 200
             except Exception as e:
                 return f"Error: Failed to execute '{build_command}'. Exception: {str(e)}", 500
 

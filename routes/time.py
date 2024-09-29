@@ -12,11 +12,6 @@ def time_route(app):
         beijing_time = get_current_time('Asia/Shanghai')
         return jsonify({'beijing_time': beijing_time})
 
-    @app.route('/USAtime', methods=['GET'])
-    def get_usa_time():
-        usa_time = get_current_time('America/New_York')
-        return jsonify({'usa_time': usa_time})
-
     @app.route('/hktime', methods=['GET'])
     def get_hong_kong_time():
         hong_kong_time = get_current_time('Asia/Hong_Kong')
@@ -27,3 +22,9 @@ def time_route(app):
     def get_japanese_time():
         japanese_time = get_current_time('Asia/Tokyo')
         return jsonify({'japanese_time': japanese_time})
+
+    # 巴黎
+    @app.route('/kktime', methods=['GET'])
+    def get_kaku_time():
+        kaku_time = get_current_time('Asia/Kaku')
+        return jsonify({'kaku_time': kaku_time})
