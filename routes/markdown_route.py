@@ -21,7 +21,7 @@ def markdown_route(app):
                 return make_response('未提供路径信息或路径信息格式不正确', 400)
 
             # 在内容尾部添加作者信息
-            markdown_content = f"{markdown_content}\n\n---\n\n# 作者: {author}"
+            markdown_content = f"{markdown_content}\n\n---\n\n##### 作者: {author}"
 
             # 获取环境变量 MD_SAVE_PATH_ROOT
             md_save_path_root = os.getenv('MD_SAVE_PATH_ROOT')
