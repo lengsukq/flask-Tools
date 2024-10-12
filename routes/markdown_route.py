@@ -1,4 +1,3 @@
-
 from flask import request
 import time
 import os
@@ -13,13 +12,13 @@ def markdown_route(app):
             author = request.json.get('author')
 
             if not markdown_content:
-                return make_response('No content provided', 400)
+                return make_response('未提供内容', 400)
 
             if not author:
-                return make_response('No author provided', 400)
+                return make_response('未提供作者信息', 400)
 
-            # 在 content 开头添加作者信息
-            markdown_content = f"# Author: {author}\n\n{markdown_content}"
+            # 在内容开头添加作者信息
+            markdown_content = f"# 作者: {author}\n\n{markdown_content}"
 
             # 生成文件名
             filename = f"output_{int(time.time())}.md"
@@ -34,6 +33,6 @@ def markdown_route(app):
             with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(markdown_content)
 
-            return make_response('Markdown file saved successfully', 200, {'filename': file_path})
+            return make_response('Markdown 文件保存成功', 200, {'filename': file_path})
         except Exception as e:
-            return make_response(f'Error saving markdown file: {str(e)}', 500)
+            return make_response(f'保存 Markdown 文件时出错: {str(e)}', 500)
