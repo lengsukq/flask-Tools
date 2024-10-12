@@ -1,7 +1,11 @@
+# app.py
+
 from flask import Flask, jsonify
+from flask_cors import CORS  # 导入 flask-cors
 from routes.webhook import webhook_route
 from routes.time import time_route
 from routes.LoveLetter import loveletter_route
+from routes.markdown_route import markdown_route  # 导入新的路由
 import os
 from dotenv import load_dotenv
 
@@ -9,11 +13,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # 配置 CORS
 
 # 注册 webhook 路由
 webhook_route(app)
 time_route(app)
 loveletter_route(app)
+markdown_route(app)  # 注册新的路由
+
 # 创建一个新的路由，用于显示所有路由的列表
 @app.route('/', methods=['GET'])
 def list_routes():
