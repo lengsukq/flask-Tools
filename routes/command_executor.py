@@ -1,4 +1,4 @@
-from flask import request, Response, send_from_directory, jsonify
+from flask import request, Response, send_from_directory
 import subprocess
 import threading
 import os
@@ -49,6 +49,7 @@ def command_executor_route(app):
 
             # 获取命令行参数
             command = request.json.get('command')
+            selected_branch = request.json.get('selectedBranch')
             if not command:
                 return make_response("未提供命令", 200)
 
@@ -63,10 +64,15 @@ def command_executor_route(app):
             except FileNotFoundError:
                 return make_response(f"目录 {auto_build_shell_path} 不存在", 200)
 
+            # 如果提供了 selectedBranch 参数，切换分支并执行相关操作
+            if selected_branch:
+                # 拼接命令
+                full_command = f"git fetch origin && git checkout -f {selected_branch} && git reset --hard origin/{selected_branch} && yarn install --frozen-lockfile && {command}"
+
             # 启动命令行任务
             try:
                 current_process = subprocess.Popen(
-                    command,
+                    full_command,
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
@@ -101,7 +107,7 @@ def command_executor_route(app):
 
         try:
             # 获取当前目录下的 Git 分支
-            branches = subprocess.check_output(['git', 'branch','-a'], text=True).splitlines()
+            branches = subprocess.check_output(['git', 'branch', '-a'], text=True).splitlines()
             current_branch = [branch.strip('* ') for branch in branches if branch.startswith('*')][0]
             branches = [branch.strip() for branch in branches]
             return make_response("获取成功", 200, {
