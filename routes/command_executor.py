@@ -70,7 +70,7 @@ def command_executor_route(app):
             # 如果提供了 selectedBranch 参数，切换分支并执行相关操作
             if selected_branch:
                 # 拼接命令
-                full_command = f"git fetch origin && git checkout -f {selected_branch} && git reset --hard origin/{selected_branch} && yarn install --frozen-lockfile && {command}"
+                full_command = f"git fetch origin && git checkout -f {selected_branch} && git reset --hard origin/{selected_branch} && yarn install --no-lockfile && {command}"
 
             # 启动命令行任务
             try:
