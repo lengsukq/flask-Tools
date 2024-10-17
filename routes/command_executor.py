@@ -14,28 +14,31 @@ compressed_file_path = None
 
 def stream_output(process):
     global compressed_file_path
-    while True:
-        line = process.stdout.readline()
-        if not line:
-            break
-        yield line  # 直接 yield line，不需要 decode
+    try:
+        while True:
+            line = process.stdout.readline()
+            if not line:
+                break
+            yield line  # 直接 yield line，不需要 decode
 
-    process.stdout.close()
-    process.wait()
+        process.stdout.close()
+        process.wait()
 
-    # 检查是否有 dist 文件夹，并压缩
-    current_directory = os.getcwd()
-    yield f"\n当前目录: {current_directory}\n"
+        # 检查是否有 dist 文件夹，并压缩
+        current_directory = os.getcwd()
+        yield f"\n当前目录: {current_directory}\n"
 
-    if os.path.exists('dist'):
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        zip_filename = f'dist_{timestamp}.zip'
-        shutil.make_archive(zip_filename.replace('.zip', ''), 'zip', 'dist')
-        compressed_file_path = os.path.join(current_directory, zip_filename)
-        yield f"\nDist 文件夹已压缩为 {zip_filename}\n"
-        yield f"\n下载链接: /download/{zip_filename}\n"
-    else:
-        yield "\n未找到 dist 文件夹\n"
+        if os.path.exists('dist'):
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            zip_filename = f'dist_{timestamp}.zip'
+            shutil.make_archive(zip_filename.replace('.zip', ''), 'zip', 'dist')
+            compressed_file_path = os.path.join(current_directory, zip_filename)
+            yield f"\nDist 文件夹已压缩为 {zip_filename}\n"
+            yield f"\n下载链接: /download/{zip_filename}\n"
+        else:
+            yield "\n未找到 dist 文件夹\n"
+    except Exception as e:
+        yield f"\n错误: {str(e)}\n"
 
 def command_executor_route(app):
     @app.route('/execute', methods=['POST'])
@@ -81,8 +84,18 @@ def command_executor_route(app):
             except Exception as e:
                 return make_response(f"错误: 执行 '{command}' 失败。异常: {str(e)}", 200)
 
+        # 设置超时时间（例如 60 秒）
+        timeout = 360
+        timer = threading.Timer(timeout, current_process.kill)
+        timer.start()
+
         # 实时输出命令行结果
-        return Response(stream_output(current_process), mimetype='text/plain')
+        response = Response(stream_output(current_process), mimetype='text/plain')
+
+        # 停止计时器
+        timer.cancel()
+
+        return response
 
     @app.route('/download/<filename>', methods=['GET'])
     def download(filename):
