@@ -14,13 +14,19 @@ compressed_file_path = None
 
 def stream_output(process):
     global compressed_file_path
-    for line in iter(process.stdout.readline, b''):
+    while True:
+        line = process.stdout.readline()
+        if not line:
+            break
         yield line  # 直接 yield line，不需要 decode
+
     process.stdout.close()
     process.wait()
+
+    # 检查是否有 dist 文件夹，并压缩
     current_directory = os.getcwd()
     yield f"\n当前目录: {current_directory}\n"
-    # 检查是否有 dist 文件夹，并压缩
+
     if os.path.exists('dist'):
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         zip_filename = f'dist_{timestamp}.zip'
@@ -79,3 +85,28 @@ def command_executor_route(app):
             return send_from_directory(os.path.dirname(compressed_file_path), os.path.basename(compressed_file_path), as_attachment=True)
         else:
             return make_response("文件未找到", 200)
+
+    @app.route('/git-branches', methods=['GET'])
+    def git_branches():
+        # 获取环境变量 AUTO_BUILD_SHELL_PATH 的值
+        auto_build_shell_path = os.getenv('AUTO_BUILD_SHELL_PATH')
+        if not auto_build_shell_path:
+            return make_response("环境变量 AUTO_BUILD_SHELL_PATH 未设置", 200)
+
+        # 切换到 AUTO_BUILD_SHELL_PATH 目录
+        try:
+            os.chdir(auto_build_shell_path)
+        except FileNotFoundError:
+            return make_response(f"目录 {auto_build_shell_path} 不存在", 200)
+
+        try:
+            # 获取当前目录下的 Git 分支
+            branches = subprocess.check_output(['git', 'branch','-a'], text=True).splitlines()
+            current_branch = [branch.strip('* ') for branch in branches if branch.startswith('*')][0]
+            branches = [branch.strip() for branch in branches]
+            return make_response("获取成功", 200, {
+                'branches': branches,
+                'current_branch': current_branch
+            })
+        except Exception as e:
+            return make_response(f"错误: 获取 Git 分支失败。异常: {str(e)}", 200)
