@@ -66,7 +66,7 @@ def command_executor_route(app):
 
             # 如果没有传命令，则默认执行 vue-cli-service serve --mode cus
             if not command:
-                command = 'vue-cli-service serve --mode cus'
+                command = 'yarn vue-cli-service build --mode cus'
 
                 # 检查必传参数
                 if not selected_branch or not api_base_url or not web_base_url or not cas_base_url or not online_base_url:
