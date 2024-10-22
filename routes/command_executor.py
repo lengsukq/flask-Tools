@@ -55,7 +55,9 @@ def command_executor_route(app):
             selected_branch = request.json.get('selectedBranch')
             if not command:
                 return make_response("未提供命令", 200)
-
+            # 检查命令是否以 'yarn' 开头
+            if not command.startswith('yarn'):
+                return make_response({"命令必须是 'yarn' 开头"}, 200)
             # 获取环境变量 AUTO_BUILD_SHELL_PATH 的值
             auto_build_shell_path = os.getenv('AUTO_BUILD_SHELL_PATH')
             if not auto_build_shell_path:
