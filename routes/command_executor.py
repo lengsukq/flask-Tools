@@ -5,6 +5,7 @@ import os
 import shutil
 from datetime import datetime
 from utils.request import make_response
+import re
 
 # 全局变量，用于跟踪当前是否有命令行任务在执行
 current_process = None
@@ -15,7 +16,12 @@ compressed_file_path = None
 # 从环境变量中获取 ZIP 文件存储路径，如果没有定义，使用默认值 'zip_files'
 zip_directory = os.getenv('ZIP_DIRECTORY_PATH', 'zip_files')
 
-def stream_output(process, env_cus_path):
+def sanitize_filename(filename):
+    # 替换非法字符为下划线
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    return sanitized
+
+def stream_output(process, env_cus_path, api_base_url, selected_branch):
     global compressed_file_path
     try:
         while True:
@@ -37,7 +43,11 @@ def stream_output(process, env_cus_path):
                 os.makedirs(zip_directory)
 
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            zip_filename = f'dist_{timestamp}.zip'
+            # 去除 http 或 https 前缀
+            sanitized_api_base_url = re.sub(r'^https?://', '', api_base_url)
+            # 生成压缩文件名
+            sanitized_api_base_url = sanitize_filename(sanitized_api_base_url)
+            zip_filename = f'{timestamp}_{sanitized_api_base_url}_{selected_branch}.zip'
             zip_path = os.path.join(zip_directory, zip_filename)
             shutil.make_archive(zip_path.replace('.zip', ''), 'zip', 'dist')
             compressed_file_path = zip_path
@@ -131,7 +141,7 @@ def command_executor_route(app):
         timer = threading.Timer(timeout, current_process.kill)
         timer.start()
 
-        response = Response(stream_output(current_process, env_cus_path), mimetype='text/plain')
+        response = Response(stream_output(current_process, env_cus_path, api_base_url, selected_branch), mimetype='text/plain')
 
         timer.cancel()
 
