@@ -1,4 +1,4 @@
-from flask import request, Response, send_from_directory
+from flask import request, Response, send_from_directory, jsonify
 import subprocess
 import threading
 import os
@@ -12,6 +12,9 @@ lock = threading.Lock()
 # 存储压缩文件路径
 compressed_file_path = None
 
+# 从环境变量中获取 ZIP 文件存储路径，如果没有定义，使用默认值 'zip_files'
+zip_directory = os.getenv('ZIP_DIRECTORY_PATH', 'zip_files')
+
 def stream_output(process, env_cus_path):
     global compressed_file_path
     try:
@@ -19,7 +22,7 @@ def stream_output(process, env_cus_path):
             line = process.stdout.readline()
             if not line:
                 break
-            yield line  # 直接 yield line，不需要 decode
+            yield line
 
         process.stdout.close()
         process.wait()
@@ -29,10 +32,15 @@ def stream_output(process, env_cus_path):
         yield f"\n当前目录: {current_directory}\n"
 
         if os.path.exists('dist'):
+            # 确保 ZIP 文件目录存在
+            if not os.path.exists(zip_directory):
+                os.makedirs(zip_directory)
+
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             zip_filename = f'dist_{timestamp}.zip'
-            shutil.make_archive(zip_filename.replace('.zip', ''), 'zip', 'dist')
-            compressed_file_path = os.path.join(current_directory, zip_filename)
+            zip_path = os.path.join(zip_directory, zip_filename)
+            shutil.make_archive(zip_path.replace('.zip', ''), 'zip', 'dist')
+            compressed_file_path = zip_path
             yield f"\nDist 文件夹已压缩为 {zip_filename}\n"
             yield f"\n下载链接: /download/{zip_filename}\n"
         else:
@@ -119,26 +127,33 @@ def command_executor_route(app):
             except Exception as e:
                 return make_response(f"错误: 执行 '{command}' 失败。异常: {str(e)}", 200)
 
-        # 设置超时时间（例如 60 秒）
         timeout = 360
         timer = threading.Timer(timeout, current_process.kill)
         timer.start()
 
-        # 实时输出命令行结果
         response = Response(stream_output(current_process, env_cus_path), mimetype='text/plain')
 
-        # 停止计时器
         timer.cancel()
 
         return response
 
     @app.route('/download/<filename>', methods=['GET'])
     def download(filename):
-        global compressed_file_path
-        if compressed_file_path and os.path.exists(compressed_file_path):
-            return send_from_directory(os.path.dirname(compressed_file_path), os.path.basename(compressed_file_path), as_attachment=True)
+        file_path = os.path.join(zip_directory, filename)
+        if os.path.exists(file_path):
+            return send_from_directory(zip_directory, filename, as_attachment=True)
         else:
             return make_response("文件未找到", 200)
+
+    @app.route('/list-zips', methods=['GET'])
+    def list_zips():
+        if not os.path.exists(zip_directory):
+            return make_response("没有找到任何压缩文件", 200)
+
+        zip_files = [f for f in os.listdir(zip_directory) if f.endswith('.zip')]
+        zip_links = [{'filename': f, 'download_link': f'/download/{f}'} for f in zip_files]
+
+        return make_response("获取成功",200,zip_links)
 
     @app.route('/git-branches', methods=['GET'])
     def git_branches():
