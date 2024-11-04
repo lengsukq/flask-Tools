@@ -8,7 +8,7 @@ from routes.command_executor import command_executor_route  # 导入新的命令
 from routes.file_download import file_download_route  # 导入文件下载路由
 import os
 from dotenv import load_dotenv
-
+from routes.request_test_routes import request_test_route
 # 加载环境变量
 load_dotenv()
 
@@ -22,7 +22,7 @@ loveletter_route(app)
 markdown_route(app)  # 注册新的路由
 command_executor_route(app)  # 注册新的命令行执行路由
 file_download_route(app)
-
+request_test_route(app)
 # 创建一个新的路由，用于显示所有路由的列表
 @app.route('/', methods=['GET'])
 def list_routes():
