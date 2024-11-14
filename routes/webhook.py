@@ -9,7 +9,7 @@ def webhook_route(app):
 
     @app.route('/webhook-opt', methods=['GET', 'POST'])
     def webhook_opt():
-        return handle_webhook('/home/cunchu/code/ibs-jeecg-vue', 'yarn build:test2')
+        return handle_webhook('/home/cunchu/code/ibs-jeecg-vue', 'yarn build:test')
 
     def handle_webhook(target_dir, build_command):
         try:
