@@ -84,7 +84,7 @@ def command_executor_route(app):
 
             # 如果没有传命令，则默认执行 vue-cli-service serve --mode cus
             if not command:
-                command = 'yarn vue-cli-service build --mode cus'
+                command = 'nvm use 16 && yarn vue-cli-service build --mode cus'
 
                 # 检查必传参数
                 if not selected_branch or not api_base_url or not web_base_url or not cas_base_url or not online_base_url:
@@ -95,8 +95,8 @@ def command_executor_route(app):
                     return make_response("未提供必填项", 200)
 
             # 检查命令是否以 'yarn' 或 'vue-cli-service' 开头
-            if not command.startswith('yarn') and not command.startswith('vue-cli-service'):
-                return make_response({"命令必须是 'yarn' 或 'vue-cli-service' 开头"}, 200)
+            if not command.startswith('nvm') and not command.startswith('vue-cli-service'):
+                return make_response({"命令必须是 'nvm' 或 'vue-cli-service' 开头"}, 200)
 
             # 获取环境变量 AUTO_BUILD_SHELL_PATH 的值
             auto_build_shell_path = os.getenv('AUTO_BUILD_SHELL_PATH')
@@ -108,6 +108,13 @@ def command_executor_route(app):
                 os.chdir(auto_build_shell_path)
             except FileNotFoundError:
                 return make_response(f"目录 {auto_build_shell_path} 不存在", 200)
+
+            # 删除现有的依赖
+            if os.path.exists('node_modules'):
+                shutil.rmtree('node_modules')  # 删除 node_modules 文件夹
+
+            if os.path.exists('yarn.lock'):
+                os.remove('yarn.lock')  # 删除 yarn.lock 文件
 
             # 生成 .env.cus 文件
             env_cus_path = os.path.join(auto_build_shell_path, '.env.cus')
@@ -125,14 +132,18 @@ def command_executor_route(app):
             else:
                 full_command = f"yarn install --no-lockfile && {command}"
 
+            # 修改命令以加载 nvm 环境
+            full_command_with_nvm = f"source $HOME/.nvm/nvm.sh && {full_command}"
+
             # 启动命令行任务
             try:
                 current_process = subprocess.Popen(
-                    full_command,
+                    full_command_with_nvm,
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    text=True
+                    text=True,
+                    executable='/bin/bash'  # 确保使用 bash 来加载 nvm
                 )
             except Exception as e:
                 return make_response(f"错误: 执行 '{command}' 失败。异常: {str(e)}", 200)
