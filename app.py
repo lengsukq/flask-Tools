@@ -6,9 +6,11 @@ from routes.LoveLetter import loveletter_route
 from routes.markdown_route import markdown_route  # 导入新的路由
 from routes.command_executor import command_executor_route  # 导入新的命令行执行路由
 from routes.file_download import file_download_route  # 导入文件下载路由
+from routes.request_test_routes import request_test_route
+from routes.video_route import video_route  # 导入新的视频路由
 import os
 from dotenv import load_dotenv
-from routes.request_test_routes import request_test_route
+
 # 加载环境变量
 load_dotenv()
 
@@ -23,6 +25,8 @@ markdown_route(app)  # 注册新的路由
 command_executor_route(app)  # 注册新的命令行执行路由
 file_download_route(app)
 request_test_route(app)
+video_route(app)  # 注册新的视频路由
+
 # 创建一个新的路由，用于显示所有路由的列表
 @app.route('/', methods=['GET'])
 def list_routes():
