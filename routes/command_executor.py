@@ -166,15 +166,32 @@ def command_executor_route(app):
         else:
             return make_response("文件未找到", 200)
 
-    @app.route('/list-zips', methods=['GET'])
+    @app.route('/list-zips', methods=['POST'])
     def list_zips():
         if not os.path.exists(zip_directory):
             return make_response("没有找到任何压缩文件", 200)
 
-        zip_files = [f for f in os.listdir(zip_directory) if f.endswith('.zip')]
-        zip_links = [{'filename': f, 'download_link': f'/download/{f}'} for f in zip_files]
+        # 获取分页参数
+        page = int(request.json.get('page', 1))
+        per_page = int(request.json.get('per_page', 10))
 
-        return make_response("获取成功",200,zip_links)
+        zip_files = [f for f in os.listdir(zip_directory) if f.endswith('.zip')]
+        total_files = len(zip_files)
+
+        # 计算分页
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_files = zip_files[start:end]
+
+        zip_links = [{'filename': f, 'download_link': f'/download/{f}'} for f in paginated_files]
+
+        # 返回分页结果
+        return make_response("获取成功", 200, {
+            'total_files': total_files,
+            'page': page,
+            'per_page': per_page,
+            'files': zip_links
+        })
 
     @app.route('/git-branches', methods=['GET'])
     def git_branches():
