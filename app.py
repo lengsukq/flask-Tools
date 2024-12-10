@@ -8,6 +8,8 @@ from routes.command_executor import command_executor_route  # 导入新的命令
 from routes.file_download import file_download_route  # 导入文件下载路由
 from routes.request_test_routes import request_test_route
 from routes.video_route import video_route  # 导入新的视频路由
+from routes.gitlab import gitlab_route  # 导入新的视频路由
+
 import os
 from dotenv import load_dotenv
 
@@ -26,6 +28,7 @@ command_executor_route(app)  # 注册新的命令行执行路由
 file_download_route(app)
 request_test_route(app)
 video_route(app)  # 注册新的视频路由
+gitlab_route(app)
 
 # 创建一个新的路由，用于显示所有路由的列表
 @app.route('/', methods=['GET'])
