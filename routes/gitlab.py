@@ -11,7 +11,7 @@ def gitlab_route(app):
     def gitlab():
         # 定义请求头，包含 Cookie
         headers = {
-            "Cookie": "sidebar_collapsed=false; remember_user_token=W1s4Nl0sIiQyYSQxMCRyQW05ZXouanUxVFJiLkZmcGhxZVVlIiwiMTczMzEwNjg2Ny41MDY4MTQ1Il0%3D--860b0e27c1be6bba5386aaf2a585e759ec2e8940; _gitlab_session=6a83bef35e0437b65489a2d48c0eb233"  # 替换为实际的 Cookie 值
+            "Cookie": "sidebar_collapsed=false; remember_user_token=W1s4Nl0sIiQyYSQxMCRyQW05ZXouanUxVFJiLkZmcGhxZVVlIiwiMTczMzgxOTM3NC4xOTU5OTQ0Il0%3D--71366919a43f0aa993301e4a2a6c5cf6e7032ce1; _gitlab_session=f3a7e083e6963075a9822fc580887eef"  # 替换为实际的 Cookie 值
         }
 
         # 存储所有用户的结果
@@ -37,7 +37,9 @@ def gitlab_route(app):
                         "username": username,
                         "start_date": None,
                         "end_date": None,
-                        "total_commits": 0
+                        "total_commits": 0,
+                        "commit_days": 0,
+                        "average_commits_per_day": 0
                     })
                     continue
 
@@ -51,16 +53,27 @@ def gitlab_route(app):
                 # 计算所有日期的提交次数总和
                 total_commits = sum(commit_data.values())
 
+                # 统计提交的天数
+                commit_days = len([commits for commits in commit_data.values() if commits > 0])
+
+                # 计算日均提交次数
+                if commit_days > 0:
+                    average_commits_per_day = total_commits / commit_days
+                else:
+                    average_commits_per_day = 0
+
                 # 使用 logger 打印结果
-                logger.info("User: %s, Start date: %s, End date: %s, Total commits: %d",
-                            username, start_date, end_date, total_commits)
+                logger.info("User: %s, Start date: %s, End date: %s, Total commits: %d, Commit days: %d, Average commits per day: %.2f",
+                            username, start_date, end_date, total_commits, commit_days, average_commits_per_day)
 
                 # 添加结果到列表
                 results.append({
                     "username": username,
                     "start_date": start_date,
                     "end_date": end_date,
-                    "total_commits": total_commits
+                    "total_commits": total_commits,
+                    "commit_days": commit_days,
+                    "average_commits_per_day": round(average_commits_per_day, 2)
                 })
             else:
                 # 如果请求失败，记录错误信息
