@@ -6,7 +6,7 @@ import shutil
 from datetime import datetime
 from utils.request import make_response
 import re
-
+from datetime import datetime, timedelta
 # 全局变量，用于跟踪当前是否有命令行任务在执行
 current_process = None
 lock = threading.Lock()
@@ -217,3 +217,94 @@ def command_executor_route(app):
             })
         except Exception as e:
             return make_response(f"错误: 获取 Git 分支失败。异常: {str(e)}", 200)
+
+    @app.route('/git-commits', methods=['GET'])
+    def git_commits():
+        # 获取环境变量 AUTO_BUILD_SHELL_PATH 的值
+        auto_build_shell_path = os.getenv('AUTO_BUILD_SHELL_PATH')
+        if not auto_build_shell_path:
+            return make_response("环境变量 AUTO_BUILD_SHELL_PATH 未设置", 200)
+
+        # 切换到 AUTO_BUILD_SHELL_PATH 目录
+        try:
+            os.chdir(auto_build_shell_path)
+        except FileNotFoundError:
+            return make_response(f"目录 {auto_build_shell_path} 不存在", 200)
+
+        # 获取时间范围参数，默认为 "one_week"
+        time_range = request.args.get('time_range', 'one_week')
+
+        # 定义时间范围的映射
+        time_range_map = {
+            'one_week': timedelta(days=7),
+            'one_month': timedelta(days=30)
+        }
+
+        # 检查时间范围是否有效
+        if time_range not in time_range_map:
+            return make_response(f"无效的时间范围: {time_range}，请使用 'one_week' 或 'one_month'", 200)
+
+        # 计算时间范围的起始时间
+        start_time = datetime.now() - time_range_map[time_range]
+
+        try:
+            # 获取所有分支的提交记录，并过滤时间范围
+            commits = subprocess.check_output(
+                [
+                    'git', 'log', '--all', '--since', start_time.strftime('%Y-%m-%d'),
+                    '--pretty=format:%H %an %s %ad', '--date=iso'
+                ],
+                encoding='utf-8'  # 显式指定编码为 utf-8
+            ).splitlines()
+
+            # 将提交记录按作者分类
+            commits_by_author = {}
+
+            # 规范化作者名称的函数
+            def normalize_author(author):
+                if author == 'huangmingyu\\innover':
+                    return 'huangmingyu'
+                return author
+
+            for commit in commits:
+                # 按空格分割原始数据
+                parts = commit.split(maxsplit=3)
+                if len(parts) < 4:
+                    # 如果提交记录格式不正确，跳过该行
+                    continue
+
+                # 提取 hash（截取前 9 位）
+                commit_hash = parts[0][:9]
+
+                # 提取作者
+                author = parts[1]
+
+                # 提取 message 和 date
+                message_and_date = parts[2] + ' ' + parts[3]  # 合并 message 和 date
+                date_match = re.search(r'\d{4}-\d{2}-\d{2}', message_and_date)  # 查找日期
+                if date_match:
+                    date_start = date_match.start()
+                    message = message_and_date[:date_start].strip()  # 提取 message
+                    date = message_and_date[date_start:].strip()  # 提取 date
+                else:
+                    # 如果找不到日期，则将整个 message_and_date 作为 message
+                    message = message_and_date.strip()
+                    date = ''
+
+                # 规范化作者名称
+                author = normalize_author(author)
+
+                # 如果作者不存在，创建一个新的列表
+                if author not in commits_by_author:
+                    commits_by_author[author] = []
+
+                # 将提交记录添加到对应作者的列表中
+                commits_by_author[author].append({
+                    'hash': commit_hash,
+                    'message': message,
+                    'date': date
+                })
+
+            return make_response('获取成功', 200, commits_by_author)
+        except Exception as e:
+            return make_response(f"错误: 获取 Git 提交记录失败。异常: {str(e)}", 200)
