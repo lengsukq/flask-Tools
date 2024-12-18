@@ -218,18 +218,35 @@ def command_executor_route(app):
         except Exception as e:
             return make_response(f"错误: 获取 Git 分支失败。异常: {str(e)}", 200)
 
+    # 定义项目与环境变量的映射关系
+    REPO_ENV_MAP = {
+        'ibs-jeecg-vue': 'IBS_JEECG_VUE_PATH',
+        'epic-designer-xf': 'EPIC_DESIGNER_XF_PATH',
+        'vitepress-xf': 'VITEPRESS_XF_PATH',
+    }
+
     @app.route('/git-commits', methods=['GET'])
     def git_commits():
-        # 获取环境变量 AUTO_BUILD_SHELL_PATH 的值
-        auto_build_shell_path = os.getenv('AUTO_BUILD_SHELL_PATH')
-        if not auto_build_shell_path:
-            return make_response("环境变量 AUTO_BUILD_SHELL_PATH 未设置", 200)
+        # 获取项目参数，默认为 "ibs-jeecg-vue"
+        repo = request.args.get('repo', 'ibs-jeecg-vue')
 
-        # 切换到 AUTO_BUILD_SHELL_PATH 目录
+        # 检查项目是否在映射中
+        if repo not in REPO_ENV_MAP:
+            return make_response(f"无效的项目: {repo}，请使用以下项目之一: {', '.join(REPO_ENV_MAP.keys())}", 200)
+
+        # 获取对应的环境变量名称
+        env_var_name = REPO_ENV_MAP[repo]
+
+        # 从环境变量中获取项目路径
+        repo_path = os.getenv(env_var_name)
+        if not repo_path:
+            return make_response(f"环境变量 {env_var_name} 未设置，请设置对应的项目路径", 400)
+
+        # 切换到对应的项目目录
         try:
-            os.chdir(auto_build_shell_path)
+            os.chdir(repo_path)
         except FileNotFoundError:
-            return make_response(f"目录 {auto_build_shell_path} 不存在", 200)
+            return make_response(f"目录 {repo_path} 不存在", 500)
 
         # 获取时间范围参数，默认为 "one_week"
         time_range = request.args.get('time_range', 'one_week')
@@ -242,12 +259,19 @@ def command_executor_route(app):
 
         # 检查时间范围是否有效
         if time_range not in time_range_map:
-            return make_response(f"无效的时间范围: {time_range}，请使用 'one_week' 或 'one_month'", 200)
+            return make_response(f"无效的时间范围: {time_range}，请使用 'one_week' 或 'one_month'", 400)
 
         # 计算时间范围的起始时间
         start_time = datetime.now() - time_range_map[time_range]
 
         try:
+            # 拉取所有远程分支到本地
+            try:
+                subprocess.check_output(['git', 'fetch', '--all'], encoding='utf-8')
+                print("所有远程分支已成功拉取到本地。")
+            except subprocess.CalledProcessError as e:
+                return make_response(f"拉取远程分支时出错: {e}", 500)
+
             # 获取所有分支的提交记录，并过滤时间范围
             commits = subprocess.check_output(
                 [
@@ -307,4 +331,4 @@ def command_executor_route(app):
 
             return make_response('获取成功', 200, commits_by_author)
         except Exception as e:
-            return make_response(f"错误: 获取 Git 提交记录失败。异常: {str(e)}", 200)
+            return make_response(f"错误: 获取 Git 提交记录失败。异常: {str(e)}", 500)
