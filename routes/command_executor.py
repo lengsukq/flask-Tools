@@ -3,7 +3,6 @@ import subprocess
 import threading
 import os
 import shutil
-from datetime import datetime
 from utils.request import make_response
 import re
 from datetime import datetime, timedelta
@@ -225,6 +224,7 @@ def command_executor_route(app):
         'vitepress-xf': 'VITEPRESS_XF_PATH',
     }
 
+
     @app.route('/git-commits', methods=['GET'])
     def git_commits():
         # 获取项目参数，默认为 "ibs-jeecg-vue"
@@ -248,21 +248,24 @@ def command_executor_route(app):
         except FileNotFoundError:
             return make_response(f"目录 {repo_path} 不存在", 500)
 
-        # 获取时间范围参数，默认为 "one_week"
-        time_range = request.args.get('time_range', 'one_week')
+        # 获取日期范围参数
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
 
-        # 定义时间范围的映射
-        time_range_map = {
-            'one_week': timedelta(days=7),
-            'one_month': timedelta(days=30)
-        }
+        # 检查日期参数是否有效
+        if not start_date or not end_date:
+            return make_response("无效的日期范围，请提供 start_date 和 end_date 参数", 400)
 
-        # 检查时间范围是否有效
-        if time_range not in time_range_map:
-            return make_response(f"无效的时间范围: {time_range}，请使用 'one_week' 或 'one_month'", 400)
+        try:
+            # 尝试将日期字符串转换为 datetime 对象
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
 
-        # 计算时间范围的起始时间
-        start_time = datetime.now() - time_range_map[time_range]
+            # 如果 start_date 和 end_date 是同一天，将 end_date 扩展到当天的最后一秒
+            if start_date == end_date:
+                end_date += timedelta(days=1, seconds=-1)
+        except ValueError:
+            return make_response("日期格式无效，请使用 YYYY-MM-DD 格式", 400)
 
         try:
             # 拉取所有远程分支到本地
@@ -275,7 +278,8 @@ def command_executor_route(app):
             # 获取所有分支的提交记录，并过滤时间范围
             commits = subprocess.check_output(
                 [
-                    'git', 'log', '--all', '--since', start_time.strftime('%Y-%m-%d'),
+                    'git', 'log', '--all', '--since', start_date.strftime('%Y-%m-%d %H:%M:%S'),
+                    '--until', end_date.strftime('%Y-%m-%d %H:%M:%S'),
                     '--pretty=format:%H %an %s %ad', '--date=iso'
                 ],
                 encoding='utf-8'  # 显式指定编码为 utf-8
@@ -288,6 +292,10 @@ def command_executor_route(app):
             def normalize_author(author):
                 if author == 'huangmingyu\\innover':
                     return 'huangmingyu'
+                if author == 'lengsukq':
+                    return 'tanghongxin'
+                if author == '刘泽琼':
+                    return 'liuzeqiong'
                 return author
 
             for commit in commits:
