@@ -6,6 +6,8 @@ import shutil
 from utils.request import make_response
 import re
 from datetime import datetime, timedelta
+from pytz import timezone
+
 # 全局变量，用于跟踪当前是否有命令行任务在执行
 current_process = None
 lock = threading.Lock()
@@ -224,7 +226,6 @@ def command_executor_route(app):
         'vitepress-xf': 'VITEPRESS_XF_PATH',
     }
 
-
     @app.route('/git-commits', methods=['GET'])
     def git_commits():
         # 获取项目参数，默认为 "ibs-jeecg-vue"
@@ -232,7 +233,7 @@ def command_executor_route(app):
 
         # 检查项目是否在映射中
         if repo not in REPO_ENV_MAP:
-            return make_response(f"无效的项目: {repo}，请使用以下项目之一: {', '.join(REPO_ENV_MAP.keys())}", 200)
+            return make_response(f"无效的项目: {repo}，请使用以下项目之一: {', '.join(REPO_ENV_MAP.keys())}", 400)
 
         # 获取对应的环境变量名称
         env_var_name = REPO_ENV_MAP[repo]
@@ -259,13 +260,16 @@ def command_executor_route(app):
         try:
             # 尝试将日期字符串转换为 datetime 对象
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-
-            # 如果 start_date 和 end_date 是同一天，将 end_date 扩展到当天的最后一秒
-            if start_date == end_date:
-                end_date += timedelta(days=1, seconds=-1)
+            end_date = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)  # 将结束日期加一天
         except ValueError:
             return make_response("日期格式无效，请使用 YYYY-MM-DD 格式", 400)
+
+        # 假设服务器时区是 'Asia/Shanghai'
+        server_timezone = timezone('Asia/Shanghai')
+
+        # 将 start_date 和 end_date 转换为 UTC 时间
+        start_date_utc = server_timezone.localize(start_date).astimezone(timezone('UTC'))
+        end_date_utc = server_timezone.localize(end_date).astimezone(timezone('UTC'))
 
         try:
             # 拉取所有远程分支到本地
@@ -278,11 +282,11 @@ def command_executor_route(app):
             # 获取所有分支的提交记录，并过滤时间范围
             commits = subprocess.check_output(
                 [
-                    'git', 'log', '--all', '--since', start_date.strftime('%Y-%m-%d %H:%M:%S'),
-                    '--until', end_date.strftime('%Y-%m-%d %H:%M:%S'),
+                    'git', 'log', '--all', '--since', start_date_utc.strftime('%Y-%m-%d %H:%M:%S'),
+                    '--until', end_date_utc.strftime('%Y-%m-%d %H:%M:%S'),
                     '--pretty=format:%H %an %s %ad', '--date=iso'
                 ],
-                encoding='utf-8'  # 显式指定编码为 utf-8
+                encoding='utf-8'
             ).splitlines()
 
             # 将提交记录按作者分类
