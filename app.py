@@ -10,6 +10,7 @@ from routes.request_test_routes import request_test_route
 from routes.video_route import video_route  # 导入新的视频路由
 from routes.gitlab import gitlab_route  # 导入新的视频路由
 from routes.proxy import proxy_route
+from routes.chandao import chandao_route
 
 import os
 from dotenv import load_dotenv
@@ -31,6 +32,7 @@ request_test_route(app)
 video_route(app)  # 注册新的视频路由
 gitlab_route(app)
 proxy_route(app)
+chandao_route(app)
 # 创建一个新的路由，用于显示所有路由的列表
 @app.route('/', methods=['GET'])
 def list_routes():
